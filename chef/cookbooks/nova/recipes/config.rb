@@ -172,6 +172,55 @@ else
   eqlx_params = nil
 end
 
+# do the Ceph stuff
+def ceph_get_client_key(pool, service)
+  #TODO cluster name
+  cluster = 'ceph'
+  hostname = %x[hostname]
+  hostname.chomp!
+  client_name = "client.#{hostname}.#{service}"
+  key_path = "/var/lib/ceph/bootstrap-client/#{cluster}.#{client_name}.keyring"
+  final_key_path = "/etc/ceph/#{cluster}.#{client_name}.keyring"
+ 
+  client_key = %x[ceph --cluster #{cluster} --name client.bootstrap-client --keyring /var/lib/ceph/bootstrap-client/#{cluster}.keyring auth get-or-create-key #{client_name} osd "allow pool #{pool} rwx;" mon "allow rw"]
+  
+  file "#{key_path}.raw" do
+    owner "root"
+    group "root"
+    mode "0440"
+    content client_key
+  end
+  
+  execute "format as keyring" do
+    command <<-EOH
+        set -e
+        set -x
+        # TODO don't put the key in "ps" output, stdout
+        read KEY <"#{key_path}.raw"
+        ceph-authtool #{key_path} --create-keyring --name=#{client_name} --add-key="$KEY"
+        rm -f "#{key_path}.raw"
+        mv #{key_path} #{final_key_path}
+      EOH
+  end
+    
+  return ["#{client_name}", final_key_path]
+end
+
+ceph_client = nil
+ceph_key_loc = nil
+if not node["nova"]["ceph_instance"].nil?
+  ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
+  %x[sudo chown '#{node["nova"]["user"]}.root' #{ceph_key_loc}]
+  execute "change keyring owner" do
+    command <<-EOH
+      sudo chown "#{node["nova"]["user"]}.root" #{ceph_key_loc}
+    EOH
+  end
+
+  ENV['CEPH_ARGS'] = "-n #{ceph_client}"
+end
+
+
 template "/etc/nova/nova.conf" do
   source "nova.conf.erb"
   owner node[:nova][:user]
@@ -187,6 +236,6 @@ template "/etc/nova/nova.conf" do
             :glance_server_port => glance_server_port,
             :vncproxy_public_ip => vncproxy_public_ip,
             :eqlx_params => eqlx_params
+            :ceph_client => ceph_client
             )
 end
-

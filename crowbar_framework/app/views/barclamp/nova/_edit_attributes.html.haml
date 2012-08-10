@@ -20,6 +20,9 @@
       %label{ :for => :glance_instance }= t('.glance_instance')
       = instance_selector("glance", :glance_instance, "glance_instance", @proposal)
     %p
+      %label{ :for => :ceph_instance }= t('.ceph_instance')
+      = instance_selector("ceph", :ceph_instance, "ceph_instance", @proposal)
+    %p
       %label{ :for => :verbose }= t('.verbose')
       = select_tag :verbose, options_for_select([['true','true'], ['false', 'false']], @proposal.raw_data['attributes'][@proposal.barclamp]["verbose"].to_s), :onchange => "update_value('verbose', 'verbose', 'boolean')"
     %p

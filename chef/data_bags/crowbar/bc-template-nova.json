@@ -6,6 +6,7 @@
       "keystone_instance": "none",
       "service_user": "nova",
       "glance_instance": "none",
+      "ceph_instance": "none",
       "libvirt_type": "kvm",
       "use_novnc": true,
       "verbose": true,

@@ -29,6 +29,7 @@ class NovaService < ServiceObject
     answer << { "barclamp" => "mysql", "inst" => role.default_attributes["nova"]["db"]["mysql_instance"] }
     answer << { "barclamp" => "keystone", "inst" => role.default_attributes["nova"]["keystone_instance"] }
     answer << { "barclamp" => "glance", "inst" => role.default_attributes["nova"]["glance_instance"] }
+    answer << { "barclamp" => "ceph", "inst" => role.default_attributes["nova"]["ceph_instance"] }
     answer
   end
 
@@ -109,6 +110,20 @@ class NovaService < ServiceObject
       base["attributes"]["nova"]["glance_instance"] = glances[0] unless glances.empty?
     rescue
       @logger.info("Nova create_proposal: no glance found")
+    end
+
+    #TODO make Ceph optional, dummy!
+    base["attributes"]["nova"]["ceph_instance"] = ""
+    begin
+      cephService = CephService.new(@logger)
+      cephs = cephService.list_active[1]
+      if cephs.empty?
+        # No actives, look for proposals
+        cephs = cephService.proposals[1]
+      end
+      base["attributes"]["nova"]["ceph_instance"] = cephs[0] unless cephs.empty?
+    rescue
+      @logger.info("Nova create_proposal: no ceph found")
     end
 
     base["attributes"]["nova"]["db"]["password"] = random_password

@@ -16,6 +16,7 @@
             "service_user": { "type": "str", "required": true },
             "service_password": { "type": "str" },
             "glance_instance": { "type": "str", "required": true },
+            "ceph_instance": { "type": "str", "required": false },
             "libvirt_type": { "type": "str", "required": true },
             "use_novnc": { "type": "bool", "required": true },
             "verbose": { "type": "bool", "required": true },

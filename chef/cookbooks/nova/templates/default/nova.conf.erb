@@ -108,3 +108,9 @@ volume_driver=nova.volume.eqlx.DellEQLSanISCSIDriver
 <%=    k + '=' + v.to_s %> 
 <%   end -%>
 <% end -%>
+<% if not node["nova"]["ceph_instance"].nil? -%>
+volume_driver=nova.volume.driver.RBDDriver
+rbd_store_ceph_conf = /etc/ceph/ceph.conf
+rbd_pool=rbd
+rbd_user=<%= @ceph_client %>
+<%end -%>
