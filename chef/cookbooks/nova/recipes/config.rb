@@ -210,14 +210,27 @@ ceph_client = nil
 ceph_key_loc = nil
 if not node["nova"]["ceph_instance"].nil?
   ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
-  %x[sudo chown '#{node["nova"]["user"]}.root' #{ceph_key_loc}]
   execute "change keyring owner" do
     command <<-EOH
       sudo chown "#{node["nova"]["user"]}.root" #{ceph_key_loc}
     EOH
   end
 
-  ENV['CEPH_ARGS'] = "-n #{ceph_client}"
+  # set up CEPH_ARGS for nova-volume and nova-compute
+  ceph_args_value = "-n #{ceph_client}"
+  file_content = "env 'CEPH_ARGS=#{ceph_args_value}'"
+  file "/etc/init/nova-volume.override" do
+    owner "root"
+    group "root"
+    mode "0640"
+    content file_content
+  end
+  file "/etc/init/nova-compute.override" do
+    owner "root"
+    group "root"
+    mode "0640"
+    content file_content
+  end
 end
 
 
