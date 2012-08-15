@@ -208,29 +208,70 @@ end
 
 ceph_client = nil
 ceph_key_loc = nil
+uuid_secret = nil
 if not node["nova"]["ceph_instance"].nil?
-  ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
-  execute "change keyring owner" do
-    command <<-EOH
-      sudo chown "#{node["nova"]["user"]}.root" #{ceph_key_loc}
-    EOH
+
+  is_volume_node = node['recipes'].count("nova::volume") >= 1
+  is_compute_node = node['recipes'].count("nova::compute") >= 1
+  is_controller_node = node['recipes'].count("nova::scheduler") >= 1
+  puts "is_volume_node: #{is_volume_node}, is_compute_node: #{is_compute_node}, is_controller_node: #{is_controller_node}"
+
+  # set up CEPH_ARGS and extra metadata for nova-volume and nova-compute
+  if is_volume_node or is_compute_node
+    ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
+    puts "got a key for #{ceph_client} located at #{ceph_key_loc}"
+    %x[sudo chmod a+r #{ceph_key_loc}]
+    raise "adding read access to #{ceph_key_loc} failed" unless $?.exitstatus == 0
+    node["nova"]["ceph_client"] = ceph_client
+    node["nova"]["ceph_key_path"] = ceph_key_loc
   end
 
-  # set up CEPH_ARGS for nova-volume and nova-compute
   ceph_args_value = "-n #{ceph_client}"
   file_content = "env 'CEPH_ARGS=#{ceph_args_value}'"
-  file "/etc/init/nova-volume.override" do
-    owner "root"
-    group "root"
-    mode "0640"
-    content file_content
+  
+  if is_volume_node
+    file "/etc/init/nova-volume.override" do
+      owner "root"
+      group "root"
+      mode "0640"
+      content file_content
+    end
   end
-  file "/etc/init/nova-compute.override" do
-    owner "root"
-    group "root"
-    mode "0640"
-    content file_content
-  end
+  if is_compute_node
+    file "/etc/init/nova-compute.override" do
+      owner "root"
+      group "root"
+      mode "0640"
+      content file_content
+    end
+
+    # and we need to set up virsh secrets too!
+    secret_file_path = "/etc/ceph/ceph-secret.xml"
+    secret_uuid_path = "/etc/ceph/ceph-secret-uuid"
+    uuid_secret = %x[ cat #{secret_uuid_path} ]
+    uuid_exists = false
+    if $?.exitstatus == 0
+      uuid_exists = true
+    end
+
+    if not uuid_exists
+      uuid_secret = %x[uuidgen]
+      raise "failed to generate a uuid for virsh secret" unless $?.exitstatus == 0
+      uuid_secret.chomp!
+      file secret_file_path do
+        owner "root"
+        group "root"
+        mode "0640"
+        content "<secret ephemeral='no' private='no'> <uuid>#{uuid_secret}</uuid><usage type='ceph'> <name>client.admin secret</name> </usage> </secret>"
+      end
+      file secret_uuid_path do
+        owner "root"
+        group "root"
+        mode "0640"
+        content "#{uuid_secret}"
+      end
+    end
+  end #the nova::compute config block
 end
 
 
@@ -250,5 +291,6 @@ template "/etc/nova/nova.conf" do
             :vncproxy_public_ip => vncproxy_public_ip,
             :eqlx_params => eqlx_params
             :ceph_client => ceph_client
+            :uuid_secret => uuid_secret
             )
 end
