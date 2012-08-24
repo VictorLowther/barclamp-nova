@@ -178,7 +178,7 @@ def ceph_get_client_key(pool, service)
   cluster = 'ceph'
   hostname = %x[hostname]
   hostname.chomp!
-  client_name = "client.#{hostname}.#{service}"
+  client_name = "client.#{service}"
   key_path = "/var/lib/ceph/bootstrap-client/#{cluster}.#{client_name}.keyring"
   final_key_path = "/etc/ceph/#{cluster}.#{client_name}.keyring"
  
@@ -201,8 +201,8 @@ if not node["nova"]["ceph_instance"].nil?
   puts "is_volume_node: #{is_volume_node}, is_compute_node: #{is_compute_node}, is_controller_node: #{is_controller_node}"
 
   # set up CEPH_ARGS and extra metadata for nova-volume and nova-compute
+  ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
   if is_volume_node or is_compute_node
-    ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
     puts "got a key for #{ceph_client} located at #{ceph_key_loc}"
     %x[sudo chmod a+r #{ceph_key_loc}]
     raise "adding read access to #{ceph_key_loc} failed" unless $?.exitstatus == 0
