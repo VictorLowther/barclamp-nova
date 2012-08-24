@@ -259,6 +259,8 @@ if not node["nova"]["ceph_instance"].nil?
 end
 
 
+ceph_client_id = ceph_client.sub(/^client\./, '') # get rid of client. prefix for use by kvm as --id
+
 template "/etc/nova/nova.conf" do
   source "nova.conf.erb"
   owner node[:nova][:user]
@@ -274,7 +276,7 @@ template "/etc/nova/nova.conf" do
             :glance_server_port => glance_server_port,
             :vncproxy_public_ip => vncproxy_public_ip,
             :eqlx_params => eqlx_params
-            :ceph_client => ceph_client
+            :ceph_client => ceph_client_id,
             :uuid_secret => uuid_secret
             )
 end
