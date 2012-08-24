@@ -183,7 +183,7 @@ def ceph_get_client_key(pool, service)
   final_key_path = "/etc/ceph/#{cluster}.#{client_name}.keyring"
  
   client_key = %x[ceph --cluster #{cluster} --name client.bootstrap-client --keyring /var/lib/ceph/bootstrap-client/#{cluster}.keyring auth get-or-create-key #{client_name} osd "allow pool #{pool} rwx;" mon "allow rw"]
-  
+
   %x[ceph-authtool #{final_key_path} --create-keyring --name=#{client_name} --add-key="#{client_key}"]
   raise "creating keyring failed!" unless $?.exitstatus == 0
     
@@ -228,34 +228,34 @@ if not node["nova"]["ceph_instance"].nil?
       mode "0640"
       content file_content
     end
+  end
 
-    # and we need to set up virsh secrets too!
-    secret_file_path = "/etc/ceph/ceph-secret.xml"
-    secret_uuid_path = "/etc/ceph/ceph-secret-uuid"
-    uuid_secret = %x[ cat #{secret_uuid_path} ]
-    uuid_exists = false
-    if $?.exitstatus == 0
-      uuid_exists = true
+  # we need to generate a common virsh secret everywhere
+  secret_file_path = "/etc/ceph/ceph-secret.xml"
+  secret_uuid_path = "/etc/ceph/ceph-secret-uuid"
+  uuid_secret = %x[ cat #{secret_uuid_path} ]
+  uuid_exists = false
+  if $?.exitstatus == 0
+    uuid_exists = true
+  end
+  
+  if not uuid_exists
+    uuid_secret = %x[ceph quorum_status -k #{ceph_key_loc} --name #{ceph_client} | grep fsid | grep -o ': \"[0-9a-f\-]*\"' | grep -o "[0-9a-f\-]*"]
+    raise "failed to generate a uuid for virsh secret" unless $?.exitstatus == 0
+    uuid_secret.chomp!
+    file secret_file_path do
+      owner "root"
+      group "root"
+      mode "0640"
+      content "<secret ephemeral='no' private='no'> <uuid>#{uuid_secret}</uuid><usage type='ceph'> <name>client.admin secret</name> </usage> </secret>"
     end
-
-    if not uuid_exists
-      uuid_secret = %x[uuidgen]
-      raise "failed to generate a uuid for virsh secret" unless $?.exitstatus == 0
-      uuid_secret.chomp!
-      file secret_file_path do
-        owner "root"
-        group "root"
-        mode "0640"
-        content "<secret ephemeral='no' private='no'> <uuid>#{uuid_secret}</uuid><usage type='ceph'> <name>client.admin secret</name> </usage> </secret>"
-      end
-      file secret_uuid_path do
-        owner "root"
-        group "root"
-        mode "0640"
-        content "#{uuid_secret}"
-      end
+    file secret_uuid_path do
+      owner "root"
+      group "root"
+      mode "0640"
+      content "#{uuid_secret}"
     end
-  end #the nova::compute config block
+  end
 end
 
 
