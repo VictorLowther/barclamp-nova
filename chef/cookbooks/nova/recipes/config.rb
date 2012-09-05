@@ -184,24 +184,8 @@ def ceph_get_client_key(pool, service)
  
   client_key = %x[ceph --cluster #{cluster} --name client.bootstrap-client --keyring /var/lib/ceph/bootstrap-client/#{cluster}.keyring auth get-or-create-key #{client_name} osd "allow pool #{pool} rwx;" mon "allow rw"]
   
-  file "#{key_path}.raw" do
-    owner "root"
-    group "root"
-    mode "0440"
-    content client_key
-  end
-  
-  execute "format as keyring" do
-    command <<-EOH
-        set -e
-        set -x
-        # TODO don't put the key in "ps" output, stdout
-        read KEY <"#{key_path}.raw"
-        ceph-authtool #{key_path} --create-keyring --name=#{client_name} --add-key="$KEY"
-        rm -f "#{key_path}.raw"
-        mv #{key_path} #{final_key_path}
-      EOH
-  end
+  %x[ceph-authtool #{final_key_path} --create-keyring --name=#{client_name} --add-key="#{client_key}"]
+  raise "creating keyring failed!" unless $?.exitstatus == 0
     
   return ["#{client_name}", final_key_path]
 end
