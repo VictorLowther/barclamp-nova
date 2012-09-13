@@ -182,11 +182,14 @@ def ceph_get_client_key(pool, service)
   key_path = "/var/lib/ceph/bootstrap-client/#{cluster}.#{client_name}.keyring"
   final_key_path = "/etc/ceph/#{cluster}.#{client_name}.keyring"
  
-  client_key = %x[ceph --cluster #{cluster} --name client.bootstrap-client --keyring /var/lib/ceph/bootstrap-client/#{cluster}.keyring auth get-or-create-key #{client_name} osd "allow pool #{pool} rwx;" mon "allow rw"]
+  execute "create ceph client keyring" do
+    command <<-EOH
+      CLIENT_KEY=`ceph --cluster #{cluster} --name client.bootstrap-client --keyring /var/lib/ceph/bootstrap-client/#{cluster}.keyring auth get-or-create-key #{client_name} osd "allow pool #{pool} rwx;" mon "allow rw"`
+      ceph-authtool #{final_key_path} --create-keyring --name=#{client_name} --add-key="$CLIENT_KEY"
+    EOH
+    creates final_key_path
+  end
 
-  %x[ceph-authtool #{final_key_path} --create-keyring --name=#{client_name} --add-key="#{client_key}"]
-  raise "creating keyring failed!" unless $?.exitstatus == 0
-    
   return ["#{client_name}", final_key_path]
 end
 
@@ -203,9 +206,11 @@ if not node["nova"]["ceph_instance"].nil?
   # set up CEPH_ARGS and extra metadata for nova-volume and nova-compute
   ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
   if is_volume_node or is_compute_node
-    puts "got a key for #{ceph_client} located at #{ceph_key_loc}"
-    %x[sudo chmod a+r #{ceph_key_loc}]
-    raise "adding read access to #{ceph_key_loc} failed" unless $?.exitstatus == 0
+    execute "change the ceph keyring owner" do
+      command <<-EOH
+        sudo chmod a+r #{ceph_key_loc}
+      EOH
+    end
     node["nova"]["ceph_client"] = ceph_client
     node["nova"]["ceph_key_path"] = ceph_key_loc
   end
