@@ -28,21 +28,12 @@ nova_package("compute")
 
 if not node["nova"]["ceph_instance"].nil?
   secret_file_path = "/etc/ceph/ceph-secret.xml"
-  secret_uuid_path = "/etc/ceph/ceph-secret-uuid"
-  uuid_secret = %x[cat #{secret_uuid_path}]
-  uuid_secret.chomp!
-  raise "failed to read uuid!" unless $?.exitstatus == 0
-  ceph_client = node["nova"]["ceph_client"]
-  ceph_key_loc = node["nova"]["ceph_key_path"]
-  puts "we have the uuid_secret; it's #{uuid_secret}"
-  # get Ceph access key out of keyring and into virsh
-  ceph_access_key = %x[ceph-authtool #{ceph_key_loc} -p -n #{ceph_client}]
-  raise "failed to extract key from ceph keyring!" unless $?.exitstatus == 0
 
   execute "set the Ceph secret in virsh" do
     command <<-EOH
+      CEPH_ACCESS_KEY=`ceph-authtool #{node["nova"]["ceph_key_path"]} -p -n #{node["nova"]["ceph_client"]}`
       virsh secret-define --file #{secret_file_path}
-      virsh secret-set-value --secret #{uuid_secret} --base64 #{ceph_access_key}
+      virsh secret-set-value --secret #{node["ceph"]["config"]["fsid"]} --base64 $CEPH_ACCESS_KEY
     EOH
   end
 

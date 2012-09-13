@@ -194,8 +194,6 @@ def ceph_get_client_key(pool, service)
 end
 
 ceph_client = nil
-ceph_key_loc = nil
-uuid_secret = nil
 if not node["nova"]["ceph_instance"].nil?
 
   is_volume_node = node['recipes'].count("nova::volume") >= 1
@@ -237,30 +235,13 @@ if not node["nova"]["ceph_instance"].nil?
 
   # we need to generate a common virsh secret everywhere
   secret_file_path = "/etc/ceph/ceph-secret.xml"
-  secret_uuid_path = "/etc/ceph/ceph-secret-uuid"
-  uuid_secret = %x[ cat #{secret_uuid_path} ]
-  uuid_exists = false
-  if $?.exitstatus == 0
-    uuid_exists = true
-  end
-  
-  if not uuid_exists
-    uuid_secret = %x[ceph quorum_status -k #{ceph_key_loc} --name #{ceph_client} | grep fsid | grep -o ': \"[0-9a-f\-]*\"' | grep -o "[0-9a-f\-]*"]
-    raise "failed to generate a uuid for virsh secret" unless $?.exitstatus == 0
-    uuid_secret.chomp!
-    file secret_file_path do
-      owner "root"
-      group "root"
-      mode "0640"
-      content "<secret ephemeral='no' private='no'> <uuid>#{uuid_secret}</uuid><usage type='ceph'> <name>client.admin secret</name> </usage> </secret>"
-    end
-    file secret_uuid_path do
-      owner "root"
-      group "root"
-      mode "0640"
-      content "#{uuid_secret}"
-    end
-  end
+
+  file secret_file_path do
+    owner "root"
+    group "root"
+    mode "0640"
+    content "<secret ephemeral='no' private='no'> <uuid>#{node["ceph"]["config"]["fsid"]}</uuid><usage type='ceph'> <name>client.admin secret</name> </usage> </secret>"
+  end #file secret_file_path
 end
 
 
@@ -282,6 +263,6 @@ template "/etc/nova/nova.conf" do
             :vncproxy_public_ip => vncproxy_public_ip,
             :eqlx_params => eqlx_params
             :ceph_client => ceph_client_id,
-            :uuid_secret => uuid_secret
+            :uuid_secret => node["ceph"]["config"]["fsid"]
             )
 end
