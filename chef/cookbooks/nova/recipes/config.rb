@@ -206,7 +206,7 @@ if not node["nova"]["ceph_instance"].nil?
   if is_volume_node or is_compute_node
     execute "change the ceph keyring owner" do
       command <<-EOH
-        sudo chmod a+r #{ceph_key_loc}
+        sudo chown nova.nova #{ceph_key_loc}
       EOH
     end
     node["nova"]["ceph_client"] = ceph_client
