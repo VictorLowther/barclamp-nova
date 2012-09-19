@@ -29,11 +29,15 @@ nova_package("compute")
 if not node["nova"]["ceph_instance"].nil?
   secret_file_path = "/etc/ceph/ceph-secret.xml"
 
+  env_filter = " AND ceph_config_environment:ceph-config-#{node[:nova][:ceph_instance]}"
+  mon_server = search(:node, "roles:ceph-mon#{env_filter}")
+  ceph_fsid = mon_server[0]['ceph']['config']['fsid']
+
   execute "set the Ceph secret in virsh" do
     command <<-EOH
       CEPH_ACCESS_KEY=`ceph-authtool #{node["nova"]["ceph_key_path"]} -p -n #{node["nova"]["ceph_client"]}`
       virsh secret-define --file #{secret_file_path}
-      virsh secret-set-value --secret #{node["ceph"]["config"]["fsid"]} --base64 $CEPH_ACCESS_KEY
+      virsh secret-set-value --secret #{ceph_fsid} --base64 $CEPH_ACCESS_KEY
     EOH
   end
 

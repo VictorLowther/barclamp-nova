@@ -194,7 +194,9 @@ def ceph_get_client_key(pool, service)
 end
 
 ceph_client = nil
+ceph_fsid = nil
 if not node["nova"]["ceph_instance"].nil?
+  include_recipe "ceph::bootstrap_client"
 
   is_volume_node = node['recipes'].count("nova::volume") >= 1
   is_compute_node = node['recipes'].count("nova::compute") >= 1
@@ -236,11 +238,15 @@ if not node["nova"]["ceph_instance"].nil?
   # we need to generate a common virsh secret everywhere
   secret_file_path = "/etc/ceph/ceph-secret.xml"
 
+  env_filter = " AND ceph_config_environment:ceph-config-#{node[:nova][:ceph_instance]}"
+  mon_server = search(:node, "roles:ceph-mon#{env_filter}")
+  ceph_fsid = mon_server[0]['ceph']['config']['fsid']
+
   file secret_file_path do
     owner "root"
     group "root"
     mode "0640"
-    content "<secret ephemeral='no' private='no'> <uuid>#{node["ceph"]["config"]["fsid"]}</uuid><usage type='ceph'> <name>client.admin secret</name> </usage> </secret>"
+    content "<secret ephemeral='no' private='no'> <uuid>#{ceph_fsid}</uuid><usage type='ceph'> <name>client.admin secret</name> </usage> </secret>"
   end #file secret_file_path
 end
 
@@ -263,6 +269,6 @@ template "/etc/nova/nova.conf" do
             :vncproxy_public_ip => vncproxy_public_ip,
             :eqlx_params => eqlx_params
             :ceph_client => ceph_client_id,
-            :uuid_secret => node["ceph"]["config"]["fsid"]
+            :uuid_secret => ceph_fsid
             )
 end
