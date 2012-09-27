@@ -29,7 +29,6 @@ class NovaService < ServiceObject
     answer << { "barclamp" => "mysql", "inst" => role.default_attributes["nova"]["db"]["mysql_instance"] }
     answer << { "barclamp" => "keystone", "inst" => role.default_attributes["nova"]["keystone_instance"] }
     answer << { "barclamp" => "glance", "inst" => role.default_attributes["nova"]["glance_instance"] }
-    answer << { "barclamp" => "ceph", "inst" => role.default_attributes["nova"]["ceph_instance"] }
     answer
   end
 
