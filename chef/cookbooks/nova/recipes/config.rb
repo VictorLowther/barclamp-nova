@@ -197,13 +197,11 @@ ceph_client = nil
 ceph_client_id = nil
 ceph_fsid = nil
 if not node["nova"]["ceph_instance"].empty?
-  puts "is using ceph: #{node['nova']['ceph_instance']}"
   include_recipe "ceph::bootstrap_client"
 
   is_volume_node = node['recipes'].count("nova::volume") >= 1
   is_compute_node = node['recipes'].count("nova::compute") >= 1
   is_controller_node = node['recipes'].count("nova::scheduler") >= 1
-  puts "is_volume_node: #{is_volume_node}, is_compute_node: #{is_compute_node}, is_controller_node: #{is_controller_node}"
 
   # set up CEPH_ARGS and extra metadata for nova-volume and nova-compute
   ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
