@@ -26,7 +26,7 @@ nova_package("compute")
 
 
 
-if not node["nova"]["ceph_instance"].nil?
+if not node["nova"]["ceph_instance"].empty?
   secret_file_path = "/etc/ceph/ceph-secret.xml"
 
   env_filter = " AND ceph_config_environment:ceph-config-#{node[:nova][:ceph_instance]}"

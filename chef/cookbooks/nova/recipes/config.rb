@@ -195,7 +195,8 @@ end
 
 ceph_client = nil
 ceph_fsid = nil
-if not node["nova"]["ceph_instance"].nil?
+if not node["nova"]["ceph_instance"].empty?
+  puts "is using ceph: #{node['nova']['ceph_instance']}"
   include_recipe "ceph::bootstrap_client"
 
   is_volume_node = node['recipes'].count("nova::volume") >= 1
