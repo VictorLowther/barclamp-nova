@@ -40,13 +40,6 @@ if not node["nova"]["ceph_instance"].empty?
       virsh secret-set-value --secret #{ceph_fsid} --base64 $CEPH_ACCESS_KEY
     EOH
   end
-
-  #install version of KVM with RBD support
-  package "qemu-kvm" do
-    version "1.0+noroms-0ubuntu13"
-    action :install
-    options "--force-yes"
-  end
 end #Ceph section
 
 #
