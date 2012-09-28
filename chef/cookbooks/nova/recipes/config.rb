@@ -194,6 +194,7 @@ def ceph_get_client_key(pool, service)
 end
 
 ceph_client = nil
+ceph_client_id = nil
 ceph_fsid = nil
 if not node["nova"]["ceph_instance"].empty?
   puts "is using ceph: #{node['nova']['ceph_instance']}"
@@ -206,6 +207,8 @@ if not node["nova"]["ceph_instance"].empty?
 
   # set up CEPH_ARGS and extra metadata for nova-volume and nova-compute
   ceph_client, ceph_key_loc = ceph_get_client_key("rbd", "nova")
+  ceph_client_id = ceph_client.sub(/^client\./, '') # get rid of client. prefix for use by kvm as --id
+
   if is_volume_node or is_compute_node
     execute "change the ceph keyring owner" do
       command <<-EOH
@@ -252,7 +255,6 @@ if not node["nova"]["ceph_instance"].empty?
 end
 
 
-ceph_client_id = ceph_client.sub(/^client\./, '') # get rid of client. prefix for use by kvm as --id
 
 template "/etc/nova/nova.conf" do
   source "nova.conf.erb"
