@@ -268,7 +268,7 @@ template "/etc/nova/nova.conf" do
             :glance_server_ip => glance_server_ip,
             :glance_server_port => glance_server_port,
             :vncproxy_public_ip => vncproxy_public_ip,
-            :eqlx_params => eqlx_params
+            :eqlx_params => eqlx_params,
             :ceph_client => ceph_client_id,
             :uuid_secret => ceph_fsid
             )
