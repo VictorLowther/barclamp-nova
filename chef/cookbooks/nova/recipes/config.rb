@@ -262,11 +262,13 @@ if quantum_servers.length > 0
     per_tenant_vlan=false
   end
   quantum_networking_mode = quantum_server[:quantum][:networking_mode]
+  quantum_metadata_shared_secret = "Secret"
 else
   quantum_server_ip = nil
   quantum_server_port = nil
   quantum_service_user = nil
   quantum_service_password = nil
+  quantum_metadata_shared_secret = nil
 end
 Chef::Log.info("Quantum server at #{quantum_server_ip}")
 

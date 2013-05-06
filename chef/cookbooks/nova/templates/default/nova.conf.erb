@@ -41,6 +41,8 @@ quantum_admin_tenant_name=<%= @keystone_service_tenant %>
 quantum_admin_username=<%= @quantum_service_user %>
 quantum_admin_password=<%= @quantum_service_password %>
 quantum_admin_auth_url=http://<%= @keystone_address %>:<%= @keystone_admin_port %>/v2.0
+service_quantum_metadata_proxy=true
+quantum_metadata_proxy_shared_secret=<%= @quantum_metadata_shared_secret %>
 libvirt_vif_driver=nova.virt.libvirt.vif.LibvirtHybridOVSBridgeDriver
 linuxnet_interface_driver=nova.network.linux_net.LinuxOVSInterfaceDriver
 security_group_api=quantum
