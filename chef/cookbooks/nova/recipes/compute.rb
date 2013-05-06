@@ -19,17 +19,7 @@
 #
 
 if node[:nova][:networking_backend]=="quantum"
-#unless node[:nova][:use_gitrepo]
-#  package "quantum" do
-#    action :install
-#  end
-#else
-  include_recipe "nova::quantum"
-#  pfs_and_install_deps "quantum" do
-#    cookbook "quantum"
-#    cnode quantum
-#  end
-#end
+  include_recipe "quantum::common_install"
 end
 
 include_recipe "nova::config"
@@ -40,7 +30,7 @@ nova_package("compute")
 
 # ha_enabled activates Nova High Availability (HA) networking.
 # The nova "network" and "api" recipes need to be included on the compute nodes and
-# we must specify the --multi_host=T switch on "nova-manage network create".     
+# we must specify the --multi_host=T switch on "nova-manage network create".
 
 if node[:nova][:network][:ha_enabled] and node[:nova][:networking_backend]=='nova-network'
   include_recipe "nova::api"
