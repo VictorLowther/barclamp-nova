@@ -248,8 +248,6 @@ keystone_service_user = node[:nova][:service_user]
 keystone_service_password = node[:nova][:service_password]
 Chef::Log.info("Keystone server found at #{keystone_address}")
 
-
-
 quantum_servers = search(:node, "roles:quantum-server") || []
 if quantum_servers.length > 0
   quantum_server = quantum_servers[0]
@@ -272,7 +270,6 @@ else
 end
 Chef::Log.info("Quantum server at #{quantum_server_ip}")
 
-
 #create route via quantum router to fixed network for metadata service
 #this workaround for metadata service, should be removed when quantum-metadata-proxy will be released
 if node[:nova][:networking_backend]=="quantum"
@@ -289,7 +286,6 @@ if node[:nova][:networking_backend]=="quantum"
     end
   end
 end
-
 
 template "/etc/nova/nova.conf" do
   source "nova.conf.erb"
@@ -316,4 +312,3 @@ template "/etc/nova/nova.conf" do
             :keystone_admin_port => keystone_admin_port
             )
 end
-
