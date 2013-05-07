@@ -24,65 +24,65 @@ include_recipe "nova::config"
 
 # ha_enabled activates Nova High Availability (HA) networking.
 # The nova "network" and "api" recipes need to be included on the compute nodes and
-# we must specify the --multi_host=T switch on "nova-manage network create". 
+# we must specify the --multi_host=T switch on "nova-manage network create".
 if node[:nova][:networking_backend]=="nova-network"
-cmd = "nova-manage network create --fixed_range_v4=#{node[:nova][:network][:fixed_range]} --num_networks=#{node[:nova][:network][:num_networks]} --network_size=#{node[:nova][:network][:network_size]} --label private" 
-cmd << " --multi_host=T" if node[:nova][:network][:ha_enabled]
-execute cmd do
-  user node[:nova][:user] if node.platform != "suse" and not node[:nova][:use_gitrepo]
-  not_if "nova-manage network list | grep '#{node[:nova][:network][:fixed_range].split("/")[0]}'"
-end
-
-# Add private network one day.
-
-base_ip = node[:nova][:network][:floating_range].split("/")[0]
-grep_ip = base_ip[0..-2] + (base_ip[-1].chr.to_i+1).to_s
-
-execute "nova-manage floating create --ip_range=#{node[:nova][:network][:floating_range]}" do
-  user node[:nova][:user] if node.platform != "suse" and not node[:nova][:use_gitrepo]
-  not_if "nova-manage floating list | grep '#{grep_ip}'"
-end
-
-unless node[:nova][:network][:tenant_vlans]
-  env_filter = " AND mysql_config_environment:mysql-config-#{node[:nova][:db][:mysql_instance]}"
-  db_server = search(:node, "roles:mysql-server#{env_filter}")[0]
-  db_server = node if db_server.name == node.name
-  execute "mysql-fix-ranges-fixed" do
-    command "/usr/bin/mysql -u #{node[:nova][:db][:user]} -h #{db_server[:mysql][:api_bind_host]} -p#{node[:nova][:db][:password]} #{node[:nova][:db][:database]} < /etc/mysql/nova-fixed-range.sql"
-    action :nothing
+  cmd = "nova-manage network create --fixed_range_v4=#{node[:nova][:network][:fixed_range]} --num_networks=#{node[:nova][:network][:num_networks]} --network_size=#{node[:nova][:network][:network_size]} --label private"
+  cmd << " --multi_host=T" if node[:nova][:network][:ha_enabled]
+  execute cmd do
+    user node[:nova][:user] if node.platform != "suse" and not node[:nova][:use_gitrepo]
+    not_if "nova-manage network list | grep '#{node[:nova][:network][:fixed_range].split("/")[0]}'"
   end
 
-  fixed_net = node[:network][:networks]["nova_fixed"]
-  rangeH = fixed_net["ranges"]["dhcp"]
-  netmask = fixed_net["netmask"]
-  subnet = fixed_net["subnet"]
+  # Add private network one day.
 
-  index = IPAddr.new(rangeH["start"]) & ~IPAddr.new(netmask)
-  index = index.to_i
-  stop_address = IPAddr.new(rangeH["end"]) & ~IPAddr.new(netmask)
-  stop_address = IPAddr.new(subnet) | (stop_address.to_i + 1)
-  address = IPAddr.new(subnet) | index
+  base_ip = node[:nova][:network][:floating_range].split("/")[0]
+  grep_ip = base_ip[0..-2] + (base_ip[-1].chr.to_i+1).to_s
 
-  network_list = []
-  while address != stop_address
-    network_list << address.to_s
-    index = index + 1
+  execute "nova-manage floating create --ip_range=#{node[:nova][:network][:floating_range]}" do
+    user node[:nova][:user] if node.platform != "suse" and not node[:nova][:use_gitrepo]
+    not_if "nova-manage floating list | grep '#{grep_ip}'"
+  end
+
+  unless node[:nova][:network][:tenant_vlans]
+    env_filter = " AND mysql_config_environment:mysql-config-#{node[:nova][:db][:mysql_instance]}"
+    db_server = search(:node, "roles:mysql-server#{env_filter}")[0]
+    db_server = node if db_server.name == node.name
+    execute "mysql-fix-ranges-fixed" do
+      command "/usr/bin/mysql -u #{node[:nova][:db][:user]} -h #{db_server[:mysql][:api_bind_host]} -p#{node[:nova][:db][:password]} #{node[:nova][:db][:database]} < /etc/mysql/nova-fixed-range.sql"
+      action :nothing
+    end
+
+    fixed_net = node[:network][:networks]["nova_fixed"]
+    rangeH = fixed_net["ranges"]["dhcp"]
+    netmask = fixed_net["netmask"]
+    subnet = fixed_net["subnet"]
+
+    index = IPAddr.new(rangeH["start"]) & ~IPAddr.new(netmask)
+    index = index.to_i
+    stop_address = IPAddr.new(rangeH["end"]) & ~IPAddr.new(netmask)
+    stop_address = IPAddr.new(subnet) | (stop_address.to_i + 1)
     address = IPAddr.new(subnet) | index
-  end
-  network_list << address.to_s
 
-  template "/etc/mysql/nova-fixed-range.sql" do
-    path "/etc/mysql/nova-fixed-range.sql"
-    source "fixed-range.sql.erb"
-    owner "root"
-    group "root"
-    mode "0600"
-    variables(
-      :network => network_list
-    )
-    notifies :run, resources(:execute => "mysql-fix-ranges-fixed"), :immediately
+    network_list = []
+    while address != stop_address
+      network_list << address.to_s
+      index = index + 1
+      address = IPAddr.new(subnet) | index
+    end
+    network_list << address.to_s
+
+    template "/etc/mysql/nova-fixed-range.sql" do
+      path "/etc/mysql/nova-fixed-range.sql"
+      source "fixed-range.sql.erb"
+      owner "root"
+      group "root"
+      mode "0600"
+      variables(
+                :network => network_list
+                )
+      notifies :run, resources(:execute => "mysql-fix-ranges-fixed"), :immediately
+    end
   end
-end
 end
 
 # Setup administrator credentials file
@@ -136,4 +136,3 @@ template "/root/.openrc" do
     :nova_api_ip_address => admin_api_ip
   )
 end
-
