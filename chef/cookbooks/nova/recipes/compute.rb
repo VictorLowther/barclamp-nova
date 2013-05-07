@@ -55,6 +55,16 @@ template "/etc/nova/nova-compute.conf" do
   notifies :restart, "service[nova-compute]"
 end
 
+# kill all the libvirt default networks.
+bash "Destroy the libvort default network" do
+  command "virsh net-destroy default"
+  only_if "virsh net-list |grep default"
+end
+
+link "/etc/libvirt/qemu/networks/autostart/default.xml" do
+  action :delete
+end
+
 # enable or disable the ksm setting (performance)
   
 template "/etc/default/qemu-kvm" do
