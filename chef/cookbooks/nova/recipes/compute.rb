@@ -56,9 +56,9 @@ template "/etc/nova/nova-compute.conf" do
 end
 
 # kill all the libvirt default networks.
-bash "Destroy the libvort default network" do
+execute "Destroy the libvirt default network" do
   command "virsh net-destroy default"
-  only_if "virsh net-list |grep default"
+  only_if "virsh net-list |grep -q default"
 end
 
 link "/etc/libvirt/qemu/networks/autostart/default.xml" do
