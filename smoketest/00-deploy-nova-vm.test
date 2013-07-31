@@ -120,15 +120,12 @@ for ((idx=0; idx <= 2; idx++)); do
     # Things to add here:
     # Binding a volume with Cinder
     echo "Launching $instance_name with $test_image"
-    (
-        nova boot --poll --image "$test_image" --flavor 1 \
-            --nic net-id=$fixed_net \
-            --security-groups smoketest \
-            --key-name smoketest \
-            "$instance_name" | \
-            tee "$LOGDIR/nova-$instance_name.status"
-    ) &
-    sleep 2
+    nova boot --poll --image "$test_image" --flavor 1 \
+        --nic net-id=$fixed_net \
+        --security-groups smoketest \
+        --key-name smoketest \
+        "$instance_name" | \
+        tee "$LOGDIR/nova-$instance_name.status"
 done
 wait
 declare -A fixed_ips floating_ips
